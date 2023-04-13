@@ -1,5 +1,6 @@
 #pygame documentation
 #https://devdocs.io/
+#https://devdocs.io/pygame/?fbclid=IwAR3SuXSL6_LkawiXJbET6Unm4W9XPJc1ff1JwpBNFvKspSGY0xKV2PsVUKI
 import pygame
 import random
 
@@ -18,10 +19,20 @@ HEIGHT = 700
 BLACK = (0,0,0) 
 GREEN = (0,255,0)
 RED = (255,0,0)
+WHITE = (255,255,255)
+#คะแนนเมื่อยิงโดน
+SCORE = 0
+#ชีวิต
+LIVES = 3
 
 #สร้างสกรีนหรือกล่องสำหรับใส่เกม
 screen = pygame.display.set_mode((WIDTH,HEIGHT)) 
 pygame.display.set_caption('My First Game')
+
+#background
+bg = r'C:\Users\thana.pentum\Desktop\Python\Training Python\Uncle Engineer\PyGame - 20 Week\EP5\bg.gif'
+background = pygame.image.load(bg).convert_alpha()
+background_rect = background.get_rect()
 
 #สร้างนาฬิกาของเกม
 clock = pygame.time.Clock() 
@@ -33,7 +44,7 @@ class Enemy(pygame.sprite.Sprite): #ดึงความสามารถข�
         pygame.sprite.Sprite.__init__(self)
         
         #เอารูปภาพใส่
-        img = r'C:\Users\thana.pentum\Desktop\Python\Training Python\Uncle Engineer\PyGame - 20 Week\EP4\aircraft.png'
+        img = r'C:\Users\thana.pentum\Desktop\Python\Training Python\Uncle Engineer\PyGame - 20 Week\EP5\aircraft.png'
         self.image   = pygame.image.load(img).convert_alpha() #convert alpha หมายถึงเอารูปภาพไปอยู่ใน pygame
         
         #self.image = pygame.Surface((50,50))
@@ -65,7 +76,7 @@ class Player(pygame.sprite.Sprite): #ดึงความสามารถข�
         pygame.sprite.Sprite.__init__(self)
         
         #เอารูปภาพใส่
-        img = r'C:\Users\thana.pentum\Desktop\Python\Training Python\Uncle Engineer\PyGame - 20 Week\EP4\bomber.png'
+        img = r'C:\Users\thana.pentum\Desktop\Python\Training Python\Uncle Engineer\PyGame - 20 Week\EP5\bomber.png'
         self.image   = pygame.image.load(img).convert_alpha() #convert alpha หมายถึงเอารูปภาพไปอยู่ใน pygame
 
         #self.image = pygame.Surface((50,50))
@@ -97,6 +108,7 @@ class Player(pygame.sprite.Sprite): #ดึงความสามารถข�
     def shoot(self):
         bullet = Bullet(self.rect.centerx,self.rect.top) #center x คือ ให้กระสุนออกจากตัว center ของ player และ top คือยิงจากส่วนหัวของ player
         all_sprites.add(bullet) #add sprite เข้าไป
+        group_bullet.add(bullet) #add sprite bullet เข้าใส่ group
 
 class Bullet(pygame.sprite.Sprite): #ดึงความสามารถของ pygame มาใช้ใน class
 
@@ -123,18 +135,33 @@ class Bullet(pygame.sprite.Sprite): #ดึงความสามารถข�
             self.kill() #function พิเศษในการลบ sprite
 
 
+# Score
+font_name = pygame.font.match_font('arial')
+def draw_text(screen,text,size,x,y):
+    font = pygame.font.Font(font_name,size)
+    text_surface = font.render(text,True,WHITE)
+    text_rect = text_surface.get_rect()
+    text_rect.topleft = (x,y)
+    screen.blit(text_surface,text_rect)
+
+#draw_text(screen,'SCORE:100',30,WIDTH-100,10)
+
 
 # สร้างกลุ่ม Sprite
 all_sprites = pygame.sprite.Group() #กล่องสำหรับเก็บตัวละครบทุกตัว
+group_enemy = pygame.sprite.Group() #กล่องสำหรับเก็บศัตรู
+group_bullet = pygame.sprite.Group() #กล่องสำหรับเก็บลูกกระสุน
+
 
 # Player
 Player = Player() #มาจาก class ด้านบนมาเก็บตัวแปร player สร้างตัวละครจากคลาส player
-all_sprites.add(Player) #เพิ่ตัวละครเข้าไปในกลุ่ม
+all_sprites.add(Player) #เพิ่มตัวละครเข้าไปในกลุ่ม
 
 # Enemy
-for i in range(5):
+for i in range(10):
     enemy = Enemy()
     all_sprites.add(enemy)
+    group_enemy.add(enemy)
 
 
 
@@ -144,7 +171,6 @@ running = True
 while running: #ถ้าเป็นจริง จะรันเรื่อย ๆ
     #สั่งให้เกมรันตามเฟรมเรด
     clock.tick(FPS)
-
     #ตรวจสอบว่าเราปิดเกมแล้วหรือยัง ?
     #ถ้าหากเรากดกากบาท  จะสั่งให้ตัวแปร running = False
     for event in pygame.event.get():
@@ -158,8 +184,38 @@ while running: #ถ้าเป็นจริง จะรันเรื่อ
     #ขยับตัว sprite ได้แล้ว (sprite คือตัวละคร)
     all_sprites.update()
 
+    #ตรวจสอบการชนกันของ Sprite ด้วยฟังก์ชั่น Collide
+    collide = pygame.sprite.spritecollide(Player,group_enemy,True) #False คือเวลา sprite ชนกันจะไม่หายไปถ้าเป็น True จะหายไป
+    print(collide)
+    if collide:
+        LIVES -= 1
+
+    if collide and LIVES == 0:
+        #หากมีการชนกัน  จะปิดโปรแกรมทันที
+        running = False
+
+    
+    #bullet collission
+    hits = pygame.sprite.groupcollide(group_bullet,group_enemy,True,True)  #False คือเวลา sprite ชนกันจะไม่หายไปถ้าเป็น True จะหายไป
+    print('Bullet:',hits)
+    #แก้เรื่อง eneme โดยยิงแล้วหายไปหมด
+    for h in hits:
+        enemy = Enemy()
+        all_sprites.add(enemy)
+        group_enemy.add(enemy)
+        #เพิ่ม Score
+        SCORE += 10
+
+
+
+
     #ใส่สี black ground ของเกม
     screen.fill(BLACK)  
+    #ใส่ background ที่เราใส่เข้ามา
+    screen.blit(background,background_rect)
+
+    draw_text(screen,'SCORE: {}'.format(SCORE), 30, WIDTH-300, 10)
+    draw_text(screen,'LIVES: {}'.format(LIVES), 30, WIDTH-100, 10)    
 
     #นำตัวละครทั้งหมดมาวาดใส่เกม
     all_sprites.draw(screen)
@@ -167,8 +223,8 @@ while running: #ถ้าเป็นจริง จะรันเรื่อ
     #ทำให้ pygame แสดงผล
     pygame.display.flip() 
 
-
-pygame.quit() #ออกจากเกม
+#ออกจากเกม
+pygame.quit() 
 
 
 
